@@ -1,26 +1,59 @@
 # +
+"""
+Intoduction:
+    This module implements a simple two-body descriptor
+    called radial basis functions (RBF).
+    Two-body descriptors are not complete and can not be
+    used in general situations.
+    But for simplicity we will use it for demonstrations.
+
+Definition:
+    For defining RBF we use the following function:
+        f(x) = sum_j { exp( (d[j]-x)**2 / 2*beta**2 ) (1-d[j]/c)**2 }
+    where
+        d[j]  is the distance of atom j from atom i
+        c     is the cutoff radius
+        x     is distance in the range (0, c)
+        beta  is the bandwidth of the Gaussian density function
+    In simple terms f(x) is the accumulated density of neighbors
+    at distance x.
+
+    Then the RBF descriptor for atom i is obtained by calculating
+    f(x) at several distances:
+        D[i] = [f(x[1]), f(x[2]), ...]
+    Again for simplicity we choose the set of {x[k]} on a grid:
+        x[k] = k*alpha
+
+Hyper-parameters:
+    In the above definition of RBF descriptor, two hyper-parameters
+    are used:
+        alpha
+        beta
+    A model based on this descriptor can use these parameters for
+    optimization.
+
+"""
 import numpy as np
 from neighborlist import get_neighbor_list
 
 
-def get_rbf_descriptors(atoms, cutoff, alpha, beta):
+def get_descriptor_data(atoms, cutoff, alpha, beta):
     """
-    Calculates RBF descriptor for local environment
-    of each atom within a cutoff.
+    Calculates RBF descriptor for the local environments
+    of all atom defined by the given cutoff radius.
 
     Args:
         atoms         ase.Atoms object
         cutoff        cutoff radius
-        alpha, beta   see "rbf_descriptor" function below
+        alpha, beta   hyper-parameters
 
     Returns:
         [(n_0, d_0, j_0), (n_1, d_1, j_1), ...]
         where
-        n_i  -->  indices of the neighbors of atom i
+        n_i  -->  indices for the neighbors of atom i
         d_i  -->  rbf descriptor for atom i
-        j_i  -->  jacobian of d_i wrt rij
-
-        Note: rij is coordinates of n_i relative to i
+        j_i  -->  jacobian of d_i wrt relative coordinates
+                  of n_i (r = r[n_i] - r[i])
 
     """
     nl = get_neighbor_list(atoms, cutoff)

@@ -1,24 +1,53 @@
 # +
+"""
+Implemets the dot-product kernel
+    kern(x, y) = (x.y)**eta
+where eta is a hyper-parameter.
+
+"""
 import numpy as np
 
 
-def dot_product_design_matrix(inducing, descriptor_data, eta):
-    """ """
+def get_design_matrix(inducing, descriptor_data, eta):
+    """
+    Args:
+        inducing           an inducing descriptor vector
+        descriptor_data    descriptor data (neighbors, descriptors,
+                           and jacobians) for an atomic configuration
+        eta                exponent of the kernel (hyper-parameter)
+
+    Returns:
+        p    sum of kernel evaluations between "inducing" descriptor
+             and descriptors of the atomic configuration
+        q    gradienf of p wrt atomic positions
+
+    """
     kern_sum = 0.0
     N = len(descriptor_data)
-    jac_kern_sum = np.zeros((N, 3))
+    grad_kern_sum = np.zeros((N, 3))
     for index, (neighbors, descriptor, jacobian) in enumerate(descriptor_data):
-        kern, jac_kern = dot_product_kernel(inducing, descriptor, jacobian, eta)
+        kern, grad_kern = dot_product_kernel(inducing, descriptor, jacobian, eta)
         kern_sum += kern
-        jac_kern_sum[index] -= jac_kern.sum(axis=0)
-        jac_kern_sum[neighbors] += jac_kern
-    return kern_sum, jac_kern_sum
+        grad_kern_sum[index] -= grad_kern.sum(axis=0)
+        grad_kern_sum[neighbors] += grad_kern
+    return kern_sum, grad_kern_sum
 
 
 def dot_product_kernel(inducing, descriptor, jacobian, eta):
-    """ """
+    """
+    inducing     an inducing descriptor vector
+    descriptor   a genral descriptor vector
+    jacobian     Jacobian of the descriptor vector
+    eta          exponent of the kernel function
+
+
+    Returns: p, q
+        p = (sum_i x[i]*y[i]) ** eta
+        q = grad of p
+
+    """
     prod = (inducing * descriptor).sum()
-    jac_prod = (inducing[..., None, None] * jacobian).sum(axis=0)
+    grad_prod = (inducing[..., None, None] * jacobian).sum(axis=0)
     kern = prod**eta
-    jac_kern = eta * prod ** (eta - 1) * jac_prod
-    return kern, jac_kern
+    grad_kern = eta * prod ** (eta - 1) * grad_prod
+    return kern, grad_kern
