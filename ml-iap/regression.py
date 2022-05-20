@@ -21,7 +21,7 @@ Regression:
     The weights W={w[j]} should be calculated such that the potential energy
     and forces for the training configurations are reproduced.
     Here, again for simplicity, we convert the problem into a
-    least-squares problem:
+    least-squares problem (check the "fit" function):
         W = argmin || K @ W -Y ||**2
     where K is the design matrix and Y collects potential energy and forces
     of all training configurations.
@@ -89,9 +89,16 @@ def regression(training, cutoff, alpha, beta, eta, max_inducing):
         c = np.concatenate([a, -b])
         columns.append(c)
 
-    # Solve A w = Y:
+    # Solve A @ W = Y:
     A = np.stack(columns, axis=1)
-    weights, _, _, _ = np.linalg.lstsq(A, Y, rcond=None)
+    weights = fit(A, Y)
+
+    # Eliminate inducing descriptors whose weight is close to 0
+    is_zero = np.isclose(weights, 0.0)
+    weights = weights[~is_zero]
+    inducing = [i for i, z in zip(inducing, is_zero) if not z]
+    if is_zero.any():
+        print(f"A sparse solution is found -> num inducing = {len(inducing)}")
 
     # Training errors:
     delta_Y = A @ weights - Y
@@ -100,6 +107,26 @@ def regression(training, cutoff, alpha, beta, eta, max_inducing):
     forces_mae = abs(delta_Y[n:]).mean()
 
     return inducing, weights, mean_energy, energy_mae, forces_mae
+
+
+def fit(A, Y):
+    """
+    Args:
+        A   a matrix
+        Y   a vector
+
+    Notes:
+        Finds a solution X such that A @ X estimates Y.
+        (note @ is matrix-multiplication).
+        Here we use least-squares.
+
+        For a sparse approx we want a solution X with
+        many zeros. For this another algorithm can be
+        used (e.g. LASSO, etc).
+
+    """
+    X, _, _, _ = np.linalg.lstsq(A, Y, rcond=None)
+    return X
 
 
 def prediction(atoms, cutoff, alpha, beta, eta, inducing, weights, mean_energy):

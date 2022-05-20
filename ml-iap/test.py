@@ -4,7 +4,17 @@ import pylab as plt
 from regression import prediction
 
 
-def test_model(test_data, cutoff, alpha, beta, eta, inducing, weights, mean_energy):
+def test_model(
+    test_data,
+    cutoff,
+    alpha,
+    beta,
+    eta,
+    inducing,
+    weights,
+    mean_energy,
+    figure="test.pdf",
+):
     e_exact = []
     f_exact = []
     e_pred = []
@@ -24,21 +34,23 @@ def test_model(test_data, cutoff, alpha, beta, eta, inducing, weights, mean_ener
     f_exact = np.concatenate(f_exact)
     f_pred = np.concatenate(f_pred)
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
-    ax1.set_aspect("equal")
-    ax1.scatter(e_exact, e_pred)
-    ax1.set_xlabel("exact energies")
-    ax1.set_ylabel("predicted energies")
-    line = [e_exact.min(), e_exact.max()]
-    ax1.plot(line, line, color="r")
+    if figure:
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
+        ax1.set_aspect("equal")
+        ax1.scatter(e_exact, e_pred)
+        ax1.set_xlabel("exact energies")
+        ax1.set_ylabel("predicted energies")
+        line = [e_exact.min(), e_exact.max()]
+        ax1.plot(line, line, color="r")
 
-    ax2.set_aspect("equal")
-    ax2.scatter(f_exact, f_pred)
-    ax2.set_xlabel("exact forces")
-    ax2.set_ylabel("predicted forces")
-    line = [f_exact.min(), f_exact.max()]
-    ax2.plot(line, line, color="r")
-    fig.savefig("test.pdf")
+        ax2.set_aspect("equal")
+        ax2.scatter(f_exact, f_pred)
+        ax2.set_xlabel("exact forces")
+        ax2.set_ylabel("predicted forces")
+        line = [f_exact.min(), f_exact.max()]
+        ax2.plot(line, line, color="r")
+        fig.savefig(figure)
+        print(f"{figure} is generated.")
 
     test_energy_mae = abs(e_exact - e_pred).mean()
     test_forces_mae = abs(f_exact - f_pred).mean()
