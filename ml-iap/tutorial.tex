@@ -1,0 +1,337 @@
+\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+
+% layout
+\usepackage{geometry}
+\usepackage{setspace}
+\linespread{1.4}
+
+% refs
+\usepackage{hyperref}
+
+% math
+\usepackage{amsmath}
+%\usepackage{amsfonts}
+\usepackage{mathtools}
+\DeclarePairedDelimiter\paren{(}{)}
+\DeclarePairedDelimiter\norm{||}{||}
+
+% symbols
+\usepackage{euscript}
+\newcommand{\coord}{x}
+\newcommand{\neighbors}{\mu}
+\newcommand{\cutoff}{r_c}
+\newcommand{\scf}{\Theta}               %  smooth cutoff function
+\newcommand{\des}{p}
+\newcommand{\indu}{q}
+\newcommand{\rbf}{g}                    % radial basis functions
+\newcommand{\gradients}{{\nabla}}
+\newcommand{\jacobian}{J}
+\newcommand{\kernel}{\EuScript{K}}
+\newcommand{\energy}{\EuScript{E}}
+
+% other
+\usepackage{color}
+\newcommand{\todo}[1]{\textcolor{blue}{TODO: #1}}
+
+% title
+\title{A demonstration of kernel-based
+machine learning inter-atomic potentials}
+\author{Amir Hajibabaei}
+\date{May 2022}
+
+
+\begin{document}
+
+\maketitle
+
+
+\section{Introduction}\label{sec:introduction}
+
+In computational quantum chemistry, ab initio methods
+such as density functional theory (DFT) are used for
+finding the electronic structure of a chemical system
+given the coordinates of atoms.
+Aside from insight into the electronic structure,
+these calculations yield the forces on atoms
+which can be used for finding the optimal arrangements
+of atoms or to study the dynamics of system using
+molecular dynamics simulations.
+Although these calculations are often very slow since
+the electronic structure needs to be recalculated
+for any new instance.
+
+Recently machine learning inter-atomic potentials
+(ML-IAPs) have emerged as methods for interpolation
+of the ab initio potential energy surface.
+In these methods, the ab initio potential energy
+and forces are calculated for a set of atomic
+configurations as the training data which are
+fit to a machine learning model.
+The model is then used for predictions at new
+atomic instances.
+Neural networks (NNs) and kernel-based regression
+methods are two of the main branches.
+Here a simple example for kernel-based
+regression methods is demonstrated.
+
+
+\section{Descriptors}\label{sec:descriptors}
+
+\emph{Localization} --
+Consider a system with $N$ atoms.
+For simplicity, we assume that all atoms have the same
+atomic numbers.
+The coordinates of all atoms are collectively shown by
+\begin{equation}\label{eq:coord}
+    \coord = \{\vec{r}_i\}_{i=1}^N
+    \texttt{.}
+\end{equation}
+where $\vec{r}_i$ is the Cartesian coordinates of atom $i$.
+Assuming that inter-atomic interactions are short-ranged,
+we can define a cutoff radius $\cutoff$ for these interactions.
+Then the (modeled) force on atom $i$ depends only on the
+relative coordinates of its neighbors which are closer
+than $\cutoff$.
+The set of neighbors for atom $i$ is shown by
+\begin{gather}\label{eq:neighbors}
+    \neighbors_i =
+            \big\{
+                j \in {1, \ldots, N}
+                \: \big| \:
+                {\norm*{\vec{r}_{ij}} < \cutoff}
+            \big\}
+\end{gather}
+where $\vec{r}_{ij} = \vec{r}_{j} - \vec{r}_{i}$
+and $\norm{.}$ indicates the norm of a vector.
+
+\emph{Local descriptor} --
+A local descriptor is a mapping of the relative
+coordinates of the neighbors into a set
+of rotationally invariant numbers.
+The simplest example is the radial basis functions
+(RBF) defined by
+\begin{equation}\label{eq:rbf}
+    \rbf_i(R) =
+        \sum_{j\in\neighbors_i}
+            e^{-(\norm*{\vec{r}_{ij}}-R)^2/2\beta^2}
+            \scf(\norm*{\vec{r}_{ij}})
+\end{equation}
+where $\scf$ is a smooth cutoff function.
+Ignoring $\scf$, $\rbf_i(R)$ simply tells us
+about the density of atoms at the distance $R$ from
+atom $i$.
+But a smooth cutoff function is needed for
+contribution of neighbors to continuously vanish
+as their distance becomes close to $\cutoff$.
+$\scf$ should ensure the continuity of the descriptor
+and (at least) its first derivatives.
+A simple choice for such a smooth cutoff function is
+\begin{equation}\label{eq:scf}
+    \scf(\norm*{\vec{r}_{ij}}) =
+        \paren*{1-\frac{\norm*{\vec{r}_{ij}}}{\cutoff}}^2
+\end{equation}
+The descriptor vector can be constructed by
+evaluating RBF at several distances
+\begin{equation}\label{eq:descriptor}
+    \des_i = [\rbf_i(R_1), \rbf_i(R_2), \ldots]
+\end{equation}
+For simplicity we assume that $\{R_k\}$ are
+chosen on a grid
+\begin{equation}\label{eq:grid}
+    R_k = k \alpha
+\end{equation}
+
+\emph{Gradients} --
+Gradients of the local descriptors are needed for
+calculating the forces.
+Let $\vec{\nabla}_k$ denote the gradient of a scalar
+function with respect to the coordinates of atom $i$
+(i.e. $\vec{r}_i$).
+For briefness, we will use $\gradients_x$ to indicate
+the gradient of a scalar function with respect to
+all coordinates in an atomic configuration
+\begin{equation}\label{eq:graients}
+    \gradients_x = \{\vec{\nabla}_i\}_{i=1}^{N}
+\end{equation}
+Component-wise gradients of the descriptor vector
+with respect to the atomic coordinates is called
+Jacobian of the descriptor
+\begin{equation}
+    \jacobian_x(\des_i) =
+        [\gradients_x \rbf_i(R_1),
+        \gradients_x \rbf_i(R_2),
+        \ldots]
+\end{equation}
+
+\textbf{Homework \#1} --
+Obtain an explicit expression for $\vec{\nabla}_k \rbf_i(R)$.
+
+\emph{Completeness} --
+The RBF descriptor defined in \autoref{eq:descriptor}
+is a two-body descriptor.
+It has been shown that such a descriptors are incomplete
+because many different structures (with different energies)
+can result in the same descriptor vectors therefore they do
+not provide a one-to-one mapping of distinct atomic structures.
+A complete descriptor scheme is still one of the main
+challenges for ML-IAPs.
+But for improvement one can consider popular three-body
+descriptors such as Behler-Parinello symmetry functions
+or smooth overlap of atomic positions.
+
+\emph{Hyper-parameters} --
+In defining the RBF descriptor in \autoref{eq:descriptor},
+we have the freedom to choose $\beta$ in \autoref{eq:rbf}
+and $\alpha$ in \autoref{eq:grid}.
+These are called hyper-parameters which can be optimized
+for increasing the accuracy of a model.
+
+
+\section{Kernel functions}\label{sec:kernels}
+
+\emph{Kernels} --
+A kernel function $\kernel(\des_i, \des_j)$ indicates the
+covariance between two descriptor vectors.
+The main requirement for a kernel function is that
+it should be positive definite.
+From a practical point of view, this means that
+the covariance matrix
+\begin{equation}
+    \mathbf{k}_{ij} =
+        \kernel(\des_i,\des_j)
+\end{equation}
+for any given set of descriptors $[\des_1, \des_2, \ldots]$
+should be positive definite.
+That is all of the eigenvalues of $\mathbf{k}$ should
+be positive which implies an invertible matrix.
+
+\emph{Gaussian kernel} --
+One of the most popular kernels is the Gaussian kernel
+(also known as RBF kernel) defined by
+\begin{equation}\label{eq:gaussian}
+    \kernel(\des_i, \des_j) =
+        e^{-\norm{\des_i-\des_j}/2\lambda^2}
+\end{equation}
+where $\lambda$ is a hyper-parameter.
+
+\emph{Dot-product kernel} --
+Another popular kernel is the dot-product kernel defined by
+\begin{equation}\label{eq:dotprod}
+    \kernel(\des_i, \des_j) =
+        \paren*{\frac{\des_i.\des_j}{\norm{\des_i}\norm{\des_j}}}^\eta
+\end{equation}
+where $\eta$ is a hyper-parameter.
+
+\textbf{Homework \#2} --
+Assuming that $\des_i$ in \autoref{eq:dotprod} is obtained
+from \autoref{eq:descriptor} ($\des_i=\des_i(x)$), calculate
+$$\gradients_x \kernel(\des_i(x), \des_j)$$
+while considering $\des_j$ as a constant vector
+($\jacobian_x(\des_j)=0$).
+When applying the chain rule, do not forget about
+$\gradients_x \norm{\des_i}$.
+
+
+\section{Machine learning potentials}\label{sec:model}
+
+\emph{Representation} --
+In kernel-based ML-IAPs, the potential energy for
+an atomic configuration $x$ is represented by
+\begin{equation}\label{eq:model}
+    \energy(x) =
+        \sum_{j=1}^{m}
+            w_j
+            \sum_{i=1}^{N}
+                \kernel(\des_i(x), \indu_j)
+\end{equation}
+where $\{\des_i(x)\}_{i=1}^N$ are the local descriptors
+for the configuration $x$ and $\{\indu_j\}_{j=1}^m$
+is a set of inducing descriptors.
+The inducing descriptors are often sampled from the
+training configurations.
+$\mathbf{w}=\{w_j\}_{j=1}^m$ are the weights which should
+be calculated using a regression algorithm to fit the
+potential energy and forces of the training data.
+\autoref{eq:model} can be written in the linear form below
+\begin{equation}\label{eq:model2}
+    \energy(x) = \mathbf{k}_{x m}\mathbf{w}
+\end{equation}
+where $\mathbf{k}_{x m}$ is the $(1\times m)$ covariance matrix
+between $x$ and the inducing descriptors (summed over atoms).
+Then the forces are obtained by
+$-\gradients_x (\mathbf{k}_{x m}\mathbf{w})$.
+
+
+\section{Regression algorithms}\label{sec:regression}
+
+\emph{Regression} --
+By regression we mean an algorithm for calculating
+the weights $\mathbf{w}$ used in \autoref{eq:model2}
+by fitting into a set of training data.
+Consider a set of training atomic configurations
+$\{(x_k, E_k, F_k)\}_{k=1}^n$
+where $x_k$ are the atomic coordinates, $E_k$ are the
+potential energies, and $F_k$ are the forces.
+Once the descriptors for the atomic configurations
+are calculated we can sample a subset of them as the
+inducing set $\{\indu_j\}_{j=1}^m$.
+A random subset is a good starting point.
+By building the design matrix $\mathbf{k}_{nm}$ and
+the target vector $\mathbf{Y}$ as
+\begin{equation}
+    \mathbf{k}_{nm} =
+        \begin{bmatrix}
+            \mathbf{k}_{x_1 m} \\
+            \vdots \\
+            - \gradients_{x_1} \mathbf{k}_{x_1 m} \\
+            \vdots
+        \end{bmatrix}
+    \texttt{,} \quad
+    \mathbf{Y} =
+        \begin{bmatrix}
+            E_1 \\
+            \vdots \\
+            F_1 \\
+            \vdots
+        \end{bmatrix}
+    \texttt{,}
+\end{equation}
+the regression can written as the linear system below
+\begin{equation}
+    \mathbf{k}_{nm} \mathbf{w} = \mathbf{Y}
+\end{equation}
+
+\emph{Least squares (LS)} --
+In LS, the weight $\mathbf{w}$ are calculated by minimizing
+the following loss function
+\begin{equation}
+    L(\mathbf{w}) =
+        \norm*{\mathbf{k}_{nm} \mathbf{w} - \mathbf{Y}}
+\end{equation}
+which has the formal solution given by
+\begin{equation}
+    \mathbf{w} =
+        \paren*{\mathbf{k}_{nm}^\mathsf{T} \mathbf{k}_{nm}}^{-1}
+        \mathbf{k}_{nm}^\mathsf{T} \mathbf{Y}
+    \texttt{.}
+\end{equation}
+
+\emph{Regularized least squares (RLS)} --
+In RLS, the weight $\mathbf{w}$ are calculated by minimizing
+the following loss function
+\begin{equation}
+    L(\mathbf{w}) =
+        \norm*{\mathbf{k}_{nm} \mathbf{w} - \mathbf{Y}}
+        + \sigma^2 \norm{\mathbf{w}}
+\end{equation}
+Where $\sigma$ is a regularization hyper-parameter.
+This also has a formal solution given by
+\begin{equation}
+    \mathbf{w} =
+        \paren*{\mathbf{k}_{nm}^\mathsf{T} \mathbf{k}_{nm} + \sigma^2 I}^{-1}
+        \mathbf{k}_{nm}^\mathsf{T} \mathbf{Y}
+    \texttt{.}
+\end{equation}
+
+\end{document}
