@@ -13,7 +13,7 @@ This is a beginners example for generating and testing kernel-based ML-IAPs.
 * Dot-product kernel is used with an exponent for a kernel-based regression.
 * Least-squares is used for fitting.
 
-A tutorial can be found in `tutorial.tex` which can be converted into pdf using `pdflatex`.
+A tutorial can be found in `tutorial.tex` which can be converted to a pdf using `pdflatex`.
 Additional information can be found as comments within the code.
 
 #### Prerequisites:
